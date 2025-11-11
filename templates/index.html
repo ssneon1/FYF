@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskFlow Manager - Complete Task Management</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+  <!-- Middle Section -->
+<div class="container-fluid d-flex flex-wrap justify-content-between align-items-center py-3">
+  <!-- Logo -->
+  <div class="header-logo">
+    <img src="https://i.ibb.co/PGbr0gRj/Fill-Your-Form-LOGO.png" alt="FYF Logo" height="60">
+  </div>
+
+  <!-- Banner -->
+  <div class="header-banner text-center flex-grow-1">
+    <img src="https://i.ibb.co/8DN2xRY6/Fill-Your-Form-Banner.png" alt="FYF Banner" class="img-fluid" height="60">
+  </div>
+
+  <!-- Main Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-lightblue">
+    <div class="container-fluid">
+      <div class="collapse navbar-collapse justify-content-center" id="mainNavbar">
+        <ul class="navbar-nav">
+          <li class="nav-item"><a class="nav-link text-white" href="https://fillyourforms.com/"><i class="fa fa-home me-1"></i> Home</a></li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle text-white" href="#" role="button" data-bs-toggle="dropdown">
+              <i class="fa fa-tools me-1"></i> All Tools
+            </a>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="https://fillyourforms.com/"><i class="fa fa-file-text me-2"></i> Forms</a></li>
+              <li><a class="dropdown-item" href="https://fillyourforms.com/"><i class="fa fa-calculator me-2"></i> Calculators</a></li>
+              <li><a class="dropdown-item" href="https://fillyourforms.com/"><i class="fa fa-code me-2"></i> Developer Tools</a></li>
+              <li><a class="dropdown-item" href="https://fillyourforms.com/"><i class="fa fa-paint-brush me-2"></i> Design Tools</a></li>
+            </ul>
+          </li>
+          <li class="nav-item"><a class="nav-link text-white" href="https://fillyourforms.com/"><i class="fa fa-fire me-1"></i> Popular Tools</a></li>
+          <li class="nav-item"><a class="nav-link text-white" href="https://fillyourforms.com/"><i class="fa fa-star me-1"></i> New Tools</a></li>
+          <li class="nav-item"><a class="nav-link text-white" href="https://fillyourforms.com/"><i class="fa fa-gift me-1"></i> Premium Tools</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast">
+    <i class="fas fa-check-circle"></i>
+    <span id="toast-message">Task created successfully!</span>
+  </div>
+
+  <!-- Edit Reason Modal -->
+  <div class="modal" id="editReasonModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Reason for Change</h3>
+        <button class="close-modal" id="closeModal">&times;</button>
+      </div>
+      <div class="form-group">
+        <label for="editReason">Please provide a reason for this change:</label>
+        <textarea class="form-control" id="editReason" rows="3" placeholder="Enter reason..."></textarea>
+      </div>
+      <button class="btn" id="saveWithReason">Save Changes</button>
+    </div>
+  </div>
+
+  <!-- Share Task Modal -->
+  <div class="modal" id="shareTaskModal">
+    <div class="modal-content share-modal-content">
+      <div class="modal-header">
+        <h3>Share Task with Staff</h3>
+        <button class="close-modal" id="closeShareModal">&times;</button>
+      </div>
+      <div class="form-group">
+        <label>Select staff member to share this task with:</label>
+        <div class="staff-list-modal" id="staffListModal">
+          <!-- Staff options will be populated here -->
+        </div>
+      </div>
+      <button class="btn" id="confirmShare">Share Task</button>
+    </div>
+  </div>
+
+  <!-- Status Update Modal -->
+  <div class="modal" id="statusUpdateModal">
+    <div class="modal-content status-update-modal">
+      <div class="modal-header">
+        <h3>Status Updated</h3>
+        <button class="close-modal" id="closeStatusModal">&times;</button>
+      </div>
+      <div class="form-group">
+        <p id="statusUpdateMessage">Your Order No. <span id="statusOrderNo"></span> has been <span id="statusNewStatus"></span>.</p>
+      </div>
+      <button class="btn" id="closeStatusBtn">OK</button>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="container">
+      <div class="header-content">
+        <div class="logo">
+          <div class="logo-icon">📊</div>
+          <div>
+            <h1>TaskFlow Manager</h1>
+            <p class="tagline">Streamlining Task Management for Multi-Location Businesses</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation -->
+  <nav id="navigation" class="hidden">
+    <div class="container">
+      <div class="nav-container">
+        <ul class="nav-links">
+          <li><a href="#" class="nav-link active" data-page="dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+          <li><a href="#" class="nav-link" data-page="tasks"><i class="fas fa-tasks"></i> Tasks</a></li>
+          <li id="staff-nav" class="hidden"><a href="#" class="nav-link" data-page="staff"><i class="fas fa-users"></i> Staff</a></li>
+          <li id="reports-nav" class="hidden"><a href="#" class="nav-link" data-page="reports"><i class="fas fa-chart-bar"></i> Reports</a></li>
+          <li id="database-nav" class="hidden"><a href="#" class="nav-link" data-page="database"><i class="fas fa-database"></i> Service Database</a></li>
+          <li><a href="#" class="nav-link" data-page="staff-panel"><i class="fas fa-user-friends"></i> Staff Panel</a></li>
+        </ul>
+        <div class="user-info">
+          <span id="userRoleDisplay">Staff User</span>
+          <button class="btn btn-outline-secondary" id="themeToggle"><i class="fas fa-moon"></i> Dark Mode</button>
+          <button class="logout-btn" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="container">
+    <!-- Login Page -->
+    <section id="login-page">
+      <div class="login-container">
+        <div class="login-card">
+          <div class="login-header">
+            <h2>Welcome to TaskFlow Manager</h2>
+            <p>Please sign in to continue</p>
+          </div>
+          
+          <div class="user-type-selector">
+            <div class="user-type active" data-role="staff">Staff Login</div>
+            <div class="user-type" data-role="manager">Manager Login</div>
+            <div class="user-type" data-role="admin">Admin Login</div>
+          </div>
+          
+          <form id="login-form">
+            <div class="form-group">
+              <label for="username">Username</label>
+              <input type="text" id="username" class="form-control" placeholder="Enter your username" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="password">Password</label>
+              <input type="password" id="password" class="form-control" placeholder="Enter your password" required>
+            </div>
+            
+            <button type="submit" class="btn">Sign In</button>
+          </form>
+         
+        </div>
+      </div>
+    </section>
+
+    <!-- Dashboard -->
+    <section id="dashboard-page" class="dashboard hidden">
+      <div class="dashboard-header">
+        <h2>Dashboard</h2>
+        <div class="date-filter">
+          <select id="dateFilter" class="form-control">
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="tomorrow">Tomorrow</option>
+            <option value="last30">Last 30 Days</option>
+            <option value="all">All Time</option>
+          </select>
+        </div>
+        <div class="quick-actions">
+          <a class="btn" id="exportCsvBtn" href="/api/export/tasks.csv"><i class="fas fa-file-export"></i> Export Tasks CSV</a>
+          <button class="btn" id="createAnnouncementBtn" style="display:none"><i class="fas fa-bullhorn"></i> Create Announcement</button>
+        </div>
+      </div>
+      
+      <div class="stats-cards">
+        <div class="stat-card">
+          <h3>Total Tasks</h3>
+          <div class="value" id="totalTasks">0</div>
+        </div>
+        <div class="stat-card">
+          <h3>Tasks Today</h3>
+          <div class="value" id="tasksToday">0</div>
+        </div>
+        <div class="stat-card">
+          <h3>Completed Tasks</h3>
+          <div class="value" id="completedTasks">0</div>
+        </div>
+        <div class="stat-card" id="revenueCard">
+          <h3>Total Revenue</h3>
+          <div class="value" id="totalRevenue">₹0</div>
+        </div>
+      </div>
+      
+      <!-- Winners Section -->
+      <div class="reports-container" id="winnersContainer">
+        <h3>Top Performers</h3>
+        <div class="report-cards" id="winnersCards">
+          <!-- Winners will be populated here -->
+        </div>
+      </div>
+
+      <!-- Announcements -->
+      <div class="reports-container" id="announcementsContainer">
+        <h3>Announcements</h3>
+        <ul id="announcementsList">
+          <!-- Announcements will be populated here -->
+        </ul>
+      </div>
+      
+      <!-- Overdue Tasks Alert -->
+      <div class="reports-container" id="overdueTasksContainer">
+        <h3>Overdue Tasks <span class="alert-badge"></span></h3>
+        <p>Tasks that are Pending, In Progress, or Hold for more than 24 hours</p>
+        <div class="task-table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Order No</th>
+                <th>Name</th>
+                <th>Service</th>
+                <th>Status</th>
+                <th>Assigned</th>
+                <th>Date</th>
+                <th>Hours Overdue</th>
+              </tr>
+            </thead>
+            <tbody id="overdueTasksTable">
+              <!-- Overdue tasks will be inserted here by JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <div class="task-table-container">
+        <div class="table-header">
+          <h3>Recent Tasks</h3>
+        </div>
+        
+        <table>
+          <thead>
+            <tr>
+              <th>Order No</th>
+              <th>Name</th>
+              <th>Service</th>
+              <th>Status</th>
+              <th>Assigned</th>
+              <th>Shared With</th>
+              <th>Date</th>
+              <th>Contact</th>
+            </tr>
+          </thead>
+          <tbody id="recentTasksTable">
+            <!-- Recent tasks will be inserted here by JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Tasks Page -->
+    <section id="tasks-page" class="hidden">
+      <div class="dashboard-header">
+        <h2>Task Management</h2>
+        <button class="btn" id="addTaskBtn"><i class="fas fa-plus"></i> Add New Task</button>
+        <button class="btn" id="autoAssignBtn" style="display:none"><i class="fas fa-network-wired"></i> Auto-Assign Pending</button>
+      </div>
+      
+      <!-- Filter Section -->
+      <div class="filter-container">
+        <h3>Filter Tasks</h3>
+        <div class="filter-row">
+          <div class="form-group">
+            <label for="filterDate">Date</label>
+            <select id="filterDate" class="form-control">
+              <option value="all">All Dates</option>
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="tomorrow">Tomorrow</option>
+              <option value="custom">Custom Date</option>
+            </select>
+          </div>
+          
+          <div class="form-group" id="customDateContainer" style="display: none;">
+            <label for="customDate">Custom Date</label>
+            <input type="date" id="customDate" class="form-control">
+          </div>
+          
+          <div class="form-group">
+            <label for="filterBranch">Branch</label>
+            <select id="filterBranch" class="form-control">
+              <option value="all">All Branches</option>
+              <option value="SHOP-A">Shop A</option>
+              <option value="SHOP-B">Shop B</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="filterStaff">Staff</label>
+            <select id="filterStaff" class="form-control">
+              <option value="all">All Staff</option>
+              <!-- Staff options will be populated dynamically -->
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="filterStatus">Status</label>
+            <select id="filterStatus" class="form-control">
+              <option value="all">All Status</option>
+              <option value="Received">Received</option>
+              <option value="Pending">Pending</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+              <option value="Hold">Hold</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="filterService">Service</label>
+            <select id="filterService" class="form-control">
+              <option value="all">All Services</option>
+              <!-- Service options will be populated dynamically -->
+            </select>
+          </div>
+        </div>
+        <button class="btn" id="applyFilters">Apply Filters</button>
+        <button class="btn cancel-btn" id="resetFilters">Reset Filters</button>
+      </div>
+      
+      <!-- Task Form (Initially hidden) -->
+      <div class="task-form-container hidden" id="taskFormContainer">
+        <h3 id="formTitle">Create New Task</h3>
+        <form id="taskForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="branchCode">Branch Code *</label>
+              <select id="branchCode" class="form-control" required>
+                <option value="">Select Branch</option>
+                <option value="SHOP-A">Shop A</option>
+                <option value="SHOP-B">Shop B</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="customerName">Customer Name *</label>
+              <input type="text" id="customerName" class="form-control" placeholder="Enter customer name" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="contactNumber">Contact Number *</label>
+              <input type="tel" id="contactNumber" class="form-control" placeholder="Enter contact number" required>
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="serviceType">Query/Service *</label>
+              <select id="serviceType" class="form-control" required>
+                <option value="">Select Service</option>
+                <!-- Service options will be populated from database -->
+              </select>
+              <div class="service-tooltip" id="serviceTooltip"></div>
+            </div>
+            
+            <div class="form-group">
+              <label for="assignedTo">Assigned To *</label>
+              <select id="assignedTo" class="form-control" required>
+                <option value="">Assign Staff</option>
+                <!-- Staff options will be populated dynamically -->
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="paymode">Paymode</label>
+              <select id="paymode" class="form-control">
+                <option value="Cash">Cash</option>
+                <option value="Card">Card</option>
+                <option value="UPI">UPI</option>
+                <option value="Online">Online</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="servicePrice">Service Price (₹)</label>
+              <input type="number" id="servicePrice" class="form-control" placeholder="Enter service price" min="0" step="0.01">
+            </div>
+            
+            <div class="form-group">
+              <label for="paidAmount">Paid Amount (₹)</label>
+              <input type="number" id="paidAmount" class="form-control" placeholder="Enter paid amount" min="0" step="0.01">
+            </div>
+            
+            <div class="form-group">
+              <label for="serviceCharge">Service Charge (₹)</label>
+              <input type="number" id="serviceCharge" class="form-control" placeholder="Enter service charge" min="0" step="0.01">
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="description">Description *</label>
+            <textarea id="description" class="form-control" rows="3" placeholder="Enter task description" required></textarea>
+          </div>
+          
+          <div class="form-row">
+            <button type="submit" class="btn" id="submitTaskBtn">Submit Task</button>
+            <button type="button" class="btn cancel-btn" id="cancelTaskBtn">Cancel</button>
+          </div>
+        </form>
+      </div>
+      
+      <!-- Task Table -->
+      <div class="task-table-container">
+        <div class="table-header">
+          <h3>All Tasks</h3>
+          <input type="text" class="search-box" id="taskSearch" placeholder="Search by Order No, Name, or Mobile...">
+        </div>
+        
+        <table>
+          <thead>
+            <tr>
+              <th>Order No</th>
+              <th>Name</th>
+              <th>Service</th>
+              <th>Status</th>
+              <th>Assigned</th>
+              <th>Shared With</th>
+              <th>Date</th>
+              <th>Contact</th>
+              <th id="actionsHeader">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="taskTableBody">
+            <!-- Task rows will be inserted here by JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Staff Page -->
+    <section id="staff-page" class="hidden">
+      <div class="dashboard-header">
+        <h2>Staff Management</h2>
+        <button class="btn" id="addStaffBtn"><i class="fas fa-plus"></i> Add Staff</button>
+      </div>
+      
+      <div class="staff-list" id="staffListContainer">
+        <!-- Staff cards will be populated here -->
+      </div>
+      
+      <!-- Staff Alerts -->
+      <div class="reports-container">
+        <h3>Staff Task Alerts</h3>
+        <div class="report-cards" id="staffAlertsContainer">
+          <!-- Staff alerts will be populated here -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Reports Page -->
+    <section id="reports-page" class="hidden">
+      <div class="dashboard-header">
+        <h2>Reports & Analytics</h2>
+        <div class="date-filter">
+          <select id="reportDateFilter" class="form-control">
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+            <option value="last30" selected>Last 30 Days</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="reports-container">
+        <h3>Task Summary by Staff</h3>
+        <div class="report-cards" id="staffPerformanceCards">
+          <!-- Staff performance cards will be populated here -->
+        </div>
+      </div>
+      
+      <div class="reports-container">
+        <h3>Financial Summary</h3>
+        <div class="report-cards">
+          <div class="report-card">
+            <h4>Shop A</h4>
+            <p>Revenue: <strong>₹1,250</strong></p>
+            <p>Profit: <strong>₹850</strong></p>
+            <p>Tasks: <strong>18</strong></p>
+          </div>
+          <div class="report-card">
+            <h4>Shop B</h4>
+            <p>Revenue: <strong>₹1,200</strong></p>
+            <p>Profit: <strong>₹780</strong></p>
+            <p>Tasks: <strong>15</strong></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Service Database Page -->
+    <section id="database-page" class="hidden">
+      <div class="dashboard-header">
+        <h2>Service Database</h2>
+        <button class="btn" id="addServiceBtn"><i class="fas fa-plus"></i> Add New Service</button>
+      </div>
+      
+      <div class="service-database">
+        <div class="table-header">
+          <h3>Service List</h3>
+          <input type="text" class="search-box" id="serviceSearch" placeholder="Search services...">
+        </div>
+        
+        <div id="serviceListContainer">
+          <!-- Service list will be populated here -->
+        </div>
+      </div>
+      
+      <!-- Service Form (Initially hidden) -->
+      <div class="task-form-container hidden" id="serviceFormContainer">
+        <h3 id="serviceFormTitle">Add New Service</h3>
+        <form id="serviceForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="serviceName">Service Name *</label>
+              <input type="text" id="serviceName" class="form-control" placeholder="Enter service name" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="servicePriceDB">Service Price (₹)</label>
+              <input type="number" id="servicePriceDB" class="form-control" placeholder="Enter service price" min="0" step="0.01">
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="serviceFee">Fee (₹)</label>
+              <input type="number" id="serviceFee" class="form-control" placeholder="Enter fee" min="0" step="0.01">
+            </div>
+            
+            <div class="form-group">
+              <label for="serviceChargeDB">Service Charge (₹)</label>
+              <input type="number" id="serviceChargeDB" class="form-control" placeholder="Enter service charge" min="0" step="0.01">
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="serviceLink">Service Link</label>
+            <input type="url" id="serviceLink" class="form-control" placeholder="Enter service link">
+          </div>
+          
+          <div class="form-group">
+            <label for="serviceNote">Note/Alert</label>
+            <textarea id="serviceNote" class="form-control" rows="3" placeholder="Enter note or alert for this service"></textarea>
+          </div>
+          
+          <div class="form-row">
+            <button type="submit" class="btn" id="submitServiceBtn">Save Service</button>
+            <button type="button" class="btn cancel-btn" id="cancelServiceBtn">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Staff Panel -->
+    <section id="staff-panel" class="hidden">
+      <div class="dashboard-header">
+        <h2>Staff Panel - All Tasks Overview</h2>
+        <div class="user-info">
+          <span>Welcome, <strong id="currentStaffName">Staff Member</strong></span>
+          <span id="attendanceStatus" class="ms-3"></span>
+          <button class="btn" id="checkInBtn"><i class="fas fa-sign-in-alt"></i> Check-In</button>
+          <button class="btn" id="checkOutBtn"><i class="fas fa-sign-out-alt"></i> Check-Out</button>
+        </div>
+      </div>
+      
+      <!-- Statistics Cards -->
+      <div class="staff-panel-stats">
+        <div class="staff-stat-card">
+          <h3>Total Tasks</h3>
+          <div class="value" id="staffTotalTasks">0</div>
+        </div>
+        <div class="staff-stat-card">
+          <h3>Pending Tasks</h3>
+          <div class="value" id="staffPendingTasks">0</div>
+        </div>
+        <div class="staff-stat-card">
+          <h3>My Tasks</h3>
+          <div class="value" id="staffMyTasks">0</div>
+        </div>
+        <div class="staff-stat-card">
+          <h3>Extra Tasks</h3>
+          <div class="value" id="staffExtraTasks">0</div>
+        </div>
+      </div>
+      
+      <!-- Tabs -->
+      <div class="tab-container">
+        <div class="tab-buttons">
+          <button class="tab-btn active" data-tab="all-tasks">All Tasks</button>
+          <button class="tab-btn" data-tab="my-tasks">My Tasks</button>
+          <button class="tab-btn" data-tab="extra-tasks">Extra Tasks</button>
+        </div>
+        
+        <!-- All Tasks Tab -->
+        <div class="tab-content active" id="all-tasks">
+          <div class="task-table-container">
+            <div class="table-header">
+              <h3>All Tasks from All Branches</h3>
+              <input type="text" class="search-box" id="allTasksSearch" placeholder="Search tasks...">
+            </div>
+            
+            <div id="allTasksContainer">
+              <!-- All tasks will be populated here -->
+            </div>
+          </div>
+        </div>
+        
+        <!-- My Tasks Tab -->
+        <div class="tab-content" id="my-tasks">
+          <div class="task-table-container">
+            <div class="table-header">
+              <h3>My Assigned Tasks</h3>
+            </div>
+            
+            <div id="myTasksContainer">
+              <!-- My tasks will be populated here -->
+            </div>
+          </div>
+        </div>
+        
+        <!-- Extra Tasks Tab -->
+        <div class="tab-content" id="extra-tasks">
+          <div class="task-table-container extra-tasks-section">
+            <div class="table-header">
+              <h3>Extra Tasks I've Taken Over</h3>
+            </div>
+            
+            <div id="extraTasksContainer">
+              <!-- Extra tasks will be populated here -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
