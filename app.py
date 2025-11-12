@@ -4,15 +4,8 @@ from datetime import datetime, timedelta
 import json
 import os
 from dotenv import load_dotenv
-from database import db, User, Service, Task, Attendance, Report, Announcement
+from database import db, User, Service, Task
 from models import init_db
-from apscheduler.schedulers.background import BackgroundScheduler
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from flask import send_file
-import io
-import csv
 
 app = Flask(__name__)
 
@@ -33,14 +26,6 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# Email configuration
-SMTP_SERVER = os.getenv('SMTP_SERVER')
-SMTP_PORT = int(os.getenv('SMTP_PORT', '587'))
-SMTP_USER = os.getenv('SMTP_USER')
-SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
-EMAIL_FROM = os.getenv('EMAIL_FROM', 'no-reply@fyf-crm.local')
-ADMIN_EMAILS = [e.strip() for e in os.getenv('ADMIN_EMAILS', 'admin@fyf.local').split(',')]
-
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -51,19 +36,6 @@ def load_user(user_id):
 with app.app_context():
     db.create_all()
     init_db()
-
-    # Initialize scheduler after DB init
-    scheduler = BackgroundScheduler()
-
-    # Jobs: weekly/monthly reports, overdue alerts, daily reminders
-    scheduler.add_job(func=lambda: send_weekly_report(), trigger='cron', day_of_week='mon', hour=8, minute=0, id='weekly_report')
-    scheduler.add_job(func=lambda: send_monthly_report(), trigger='cron', day=1, hour=8, minute=0, id='monthly_report')
-    scheduler.add_job(func=lambda: send_overdue_alerts(), trigger='cron', hour=9, minute=0, id='overdue_alerts_daily')
-    scheduler.add_job(func=lambda: send_daily_reminders(), trigger='cron', hour=10, minute=0, id='daily_reminders')
-    try:
-        scheduler.start()
-    except Exception as e:
-        print(f"Scheduler start failed: {e}")
 
 
 # Utility functions
@@ -78,233 +50,6 @@ def generate_order_no():
         return f"TF-{last_number + 1:03d}"
     else:
         return "TF-001"
-
-
-# Email utility
-def send_email(to_addresses, subject, body):
-    if not isinstance(to_addresses, list):
-        to_addresses = [to_addresses]
-    if not SMTP_SERVER or not SMTP_USER or not SMTP_PASSWORD:
-        # Fallback: print to console for development
-        print(f"[EMAIL MOCK] To: {to_addresses}\nSubject: {subject}\n{body}")
-        return True
-
-    try:
-        msg = MIMEMultipart()
-        msg['From'] = EMAIL_FROM
-        msg['To'] = ', '.join(to_addresses)
-        msg['Subject'] = subject
-        msg.attach(MIMEText(body, 'html'))
-
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASSWORD)
-            server.sendmail(EMAIL_FROM, to_addresses, msg.as_string())
-        return True
-    except Exception as e:
-        print(f"Email send failed: {e}")
-        return False
-
-
-# Scheduled report and notification jobs
-def build_summary(period_days=7):
-    end = datetime.now().date()
-    start = end - timedelta(days=period_days)
-    total_tasks = Task.query.filter(Task.task_date.between(start, end)).count()
-    completed = Task.query.filter(Task.task_date.between(start, end), Task.status == 'Completed').count()
-    revenue = db.session.query(db.func.sum(Task.paid_amount)).filter(Task.task_date.between(start, end)).scalar() or 0
-    return {
-        'start': start.isoformat(),
-        'end': end.isoformat(),
-        'total_tasks': total_tasks,
-        'completed_tasks': completed,
-        'total_revenue': revenue
-    }
-
-
-def send_weekly_report():
-    summary = build_summary(7)
-    subject = "FYF Weekly Report"
-    body = f"""
-    <h3>Weekly Report ({summary['start']} to {summary['end']})</h3>
-    <ul>
-      <li>Total tasks: {summary['total_tasks']}</li>
-      <li>Completed tasks: {summary['completed_tasks']}</li>
-      <li>Total revenue: ₹{summary['total_revenue']}</li>
-    </ul>
-    """
-    send_email(ADMIN_EMAILS, subject, body)
-    # Persist report
-    report = Report(report_type='weekly', period_start=datetime.fromisoformat(summary['start']).date(), period_end=datetime.fromisoformat(summary['end']).date(), content_json=json.dumps(summary), recipients=','.join(ADMIN_EMAILS))
-    db.session.add(report)
-    db.session.commit()
-
-
-def send_monthly_report():
-    summary = build_summary(30)
-    subject = "FYF Monthly Report"
-    body = f"""
-    <h3>Monthly Report ({summary['start']} to {summary['end']})</h3>
-    <ul>
-      <li>Total tasks: {summary['total_tasks']}</li>
-      <li>Completed tasks: {summary['completed_tasks']}</li>
-      <li>Total revenue: ₹{summary['total_revenue']}</li>
-    </ul>
-    """
-    send_email(ADMIN_EMAILS, subject, body)
-    report = Report(report_type='monthly', period_start=datetime.fromisoformat(summary['start']).date(), period_end=datetime.fromisoformat(summary['end']).date(), content_json=json.dumps(summary), recipients=','.join(ADMIN_EMAILS))
-    db.session.add(report)
-    db.session.commit()
-
-
-def send_overdue_alerts():
-    overdue_threshold = datetime.now() - timedelta(hours=24)
-    overdue = Task.query.filter(Task.status.in_(['Pending', 'In Progress', 'Hold']), Task.created_at < overdue_threshold).all()
-    if not overdue:
-        return
-    grouped = {}
-    for t in overdue:
-        grouped.setdefault(t.assigned_to, []).append(t)
-    for staff, items in grouped.items():
-        body = "<h4>Overdue tasks alert</h4><ul>" + ''.join([f"<li>{i.order_no} - {i.customer_name} ({i.service_type})</li>" for i in items]) + "</ul>"
-        # Send to admin and staff if email known (mock: staff@fyf.local)
-        recipients = ADMIN_EMAILS + [f"{staff}@fyf.local"]
-        send_email(recipients, "Overdue Tasks Alert", body)
-
-
-def send_daily_reminders():
-    today = datetime.now().date()
-    staff_users = User.query.filter_by(role='staff').all()
-    for staff in staff_users:
-        tasks_today = Task.query.filter_by(assigned_to=staff.username, task_date=today).all()
-        body = f"<h4>Daily Tasks for {staff.username}</h4><ul>" + ''.join([f"<li>{t.order_no} - {t.service_type} ({t.status})</li>" for t in tasks_today]) + "</ul>"
-        send_email([f"{staff.username}@fyf.local"], "Daily Task Reminder", body)
-
-
-# --- Attendance APIs ---
-@app.route('/api/attendance/checkin', methods=['POST'])
-@login_required
-def attendance_checkin():
-    entry = Attendance(user_id=current_user.id, checkin_time=datetime.now(), status='present')
-    db.session.add(entry)
-    db.session.commit()
-    return jsonify({'message': 'Checked in', 'checkin_time': entry.checkin_time.isoformat()})
-
-
-@app.route('/api/attendance/checkout', methods=['POST'])
-@login_required
-def attendance_checkout():
-    today = datetime.now().date()
-    entry = Attendance.query.filter_by(user_id=current_user.id).filter(db.func.date(Attendance.checkin_time) == today).order_by(Attendance.checkin_time.desc()).first()
-    if not entry:
-        return jsonify({'error': 'No check-in found'}), 400
-    entry.checkout_time = datetime.now()
-    db.session.commit()
-    return jsonify({'message': 'Checked out', 'checkout_time': entry.checkout_time.isoformat()})
-
-
-@app.route('/api/attendance/list', methods=['GET'])
-@login_required
-def attendance_list():
-    user_id = request.args.get('user_id')
-    q = Attendance.query
-    if user_id:
-        q = q.filter_by(user_id=int(user_id))
-    records = [
-        {
-            'id': r.id,
-            'user_id': r.user_id,
-            'checkin_time': r.checkin_time.isoformat() if r.checkin_time else None,
-            'checkout_time': r.checkout_time.isoformat() if r.checkout_time else None,
-            'status': r.status
-        } for r in q.order_by(Attendance.checkin_time.desc()).limit(200).all()
-    ]
-    return jsonify(records)
-
-
-# --- Announcements APIs ---
-@app.route('/api/announcements', methods=['GET'])
-@login_required
-def list_announcements():
-    now = datetime.now()
-    anns = Announcement.query.filter((Announcement.expires_at.is_(None)) | (Announcement.expires_at > now)).order_by(Announcement.created_at.desc()).all()
-    return jsonify([
-        {
-            'id': a.id,
-            'title': a.title,
-            'message': a.message,
-            'audience': a.audience,
-            'created_at': a.created_at.isoformat(),
-            'expires_at': a.expires_at.isoformat() if a.expires_at else None
-        } for a in anns
-    ])
-
-
-@app.route('/api/announcements', methods=['POST'])
-@login_required
-def create_announcement():
-    if current_user.role not in ['admin', 'manager']:
-        return jsonify({'error': 'Not authorized'}), 403
-    data = request.get_json()
-    expires_at = None
-    if data.get('expires_at'):
-        try:
-            expires_at = datetime.fromisoformat(data['expires_at'])
-        except Exception:
-            pass
-    ann = Announcement(title=data.get('title', ''), message=data.get('message', ''), audience=data.get('audience', 'all'), created_by=current_user.id, expires_at=expires_at)
-    db.session.add(ann)
-    db.session.commit()
-    return jsonify({'message': 'Announcement created', 'id': ann.id})
-
-
-# --- Export API (CSV) ---
-@app.route('/api/export/tasks.csv', methods=['GET'])
-@login_required
-def export_tasks_csv():
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(['order_no', 'service_type', 'customer_name', 'assigned_to', 'status', 'task_date', 'paid_amount'])
-    for t in Task.query.order_by(Task.created_at.desc()).limit(500).all():
-        writer.writerow([t.order_no, t.service_type, t.customer_name, t.assigned_to, t.status, t.task_date.isoformat() if t.task_date else '', t.paid_amount])
-    mem = io.BytesIO()
-    mem.write(output.getvalue().encode('utf-8'))
-    mem.seek(0)
-    return send_file(mem, mimetype='text/csv', as_attachment=True, download_name='tasks.csv')
-
-
-# --- Auto-assign API ---
-@app.route('/api/tasks/auto-assign', methods=['POST'])
-@login_required
-def auto_assign_tasks():
-    if current_user.role not in ['admin', 'manager']:
-        return jsonify({'error': 'Not authorized'}), 403
-    data = request.get_json() or {}
-    service_type = data.get('service_type')
-    pending_tasks = Task.query.filter_by(status='Pending')
-    if service_type:
-        pending_tasks = pending_tasks.filter_by(service_type=service_type)
-    pending_tasks = pending_tasks.order_by(Task.created_at.asc()).limit(50).all()
-
-    staff_users = User.query.filter_by(role='staff').all()
-    if not staff_users:
-        return jsonify({'error': 'No staff users available'}), 400
-
-    # Build workload map: count of active tasks per staff
-    active_status = ['Pending', 'In Progress', 'Hold']
-    workload = {u.username: Task.query.filter_by(assigned_to=u.username).filter(Task.status.in_(active_status)).count() for u in staff_users}
-    staff_sorted = sorted(staff_users, key=lambda u: workload[u.username])
-
-    assigned = []
-    i = 0
-    for t in pending_tasks:
-        staff = staff_sorted[i % len(staff_sorted)]
-        t.assigned_to = staff.username
-        t.status = 'In Progress'
-        assigned.append({'order_no': t.order_no, 'assigned_to': t.assigned_to})
-        i += 1
-    db.session.commit()
-    return jsonify({'assigned': assigned, 'count': len(assigned)})
 
 
 # Authentication routes
@@ -614,15 +359,37 @@ def update_task(task_id):
     task = Task.query.get_or_404(task_id)
     data = request.get_json()
 
-    # Staff can only update status and need to provide reason for other changes
+    # Staff can update specific fields but need to provide reason for changes
     if current_user.role == 'staff':
-        new_status = data.get('status')
-        if new_status and new_status != task.status:
-            task.status = new_status
+        # Check if staff is allowed to edit this task
+        if task.assigned_to != current_user.username and current_user.username not in task.get_shared_with():
+            return jsonify({'error': 'You can only edit tasks assigned to you or shared with you'}), 403
+        
+        # Staff can update these fields
+        allowed_fields = ['status', 'description', 'paid_amount', 'service_charge']
+        
+        # Track if any changes were made
+        changes_made = False
+        edit_reason_parts = []
+        
+        for field in allowed_fields:
+            if field in data and getattr(task, field) != data[field]:
+                old_value = getattr(task, field)
+                new_value = data[field]
+                setattr(task, field, new_value)
+                changes_made = True
+                edit_reason_parts.append(f"{field} changed from {old_value} to {new_value}")
+        
+        # If changes were made, mark as edited and record reason
+        if changes_made:
             task.edited = True
-            task.edit_reason = f"Status changed from {task.status} to {new_status}"
+            if data.get('edit_reason'):
+                task.edit_reason = data.get('edit_reason')
+            elif edit_reason_parts:
+                task.edit_reason = "; ".join(edit_reason_parts)
         else:
-            return jsonify({'error': 'Staff can only update task status'}), 403
+            return jsonify({'error': 'No allowed fields were modified'}), 400
+            
     else:
         # Admin/Manager can update all fields
         task.customer_name = data.get('customer_name', task.customer_name)
