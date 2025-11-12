@@ -21,6 +21,18 @@
     <img src="https://i.ibb.co/8DN2xRY6/Fill-Your-Form-Banner.png" alt="FYF Banner" class="img-fluid" height="60">
   </div>
 
+  <!-- Buttons -->
+  <div class="header-buttons">
+    <button class="btn btn-primary btn-sm me-2">
+      <i class="fa fa-user me-1"></i> Login
+    </button>
+    <button class="btn btn-outline-primary btn-sm">
+      <i class="fa fa-user-plus me-1"></i> Register
+    </button>
+  </div>
+</div>
+
+
   <!-- Main Navigation -->
   <nav class="navbar navbar-expand-lg navbar-light bg-lightblue">
     <div class="container-fluid">
@@ -127,7 +139,6 @@
         </ul>
         <div class="user-info">
           <span id="userRoleDisplay">Staff User</span>
-          <button class="btn btn-outline-secondary" id="themeToggle"><i class="fas fa-moon"></i> Dark Mode</button>
           <button class="logout-btn" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</button>
         </div>
       </div>
@@ -164,7 +175,20 @@
             
             <button type="submit" class="btn">Sign In</button>
           </form>
-         
+          
+          <div class="demo-accounts">
+            <p><strong>Demo Accounts:</strong></p>
+            <p>Admin: admin / admin123</p>
+            <p>Manager: manager / password123</p>
+            <p>Staff: staff1 / password123</p>
+            <p>Staff: staff2 / password123</p>
+            <p>Staff: staff3 / password123</p>
+            <p>Staff: staff4 / password123</p>
+            <p>Staff: staff5 / password123</p>
+            <p>Staff: staff6 / password123</p>
+            <p>Staff: staff7 / password123</p>
+            <p>Staff: staff8 / password123</p>
+          </div>
         </div>
       </div>
     </section>
@@ -181,10 +205,6 @@
             <option value="last30">Last 30 Days</option>
             <option value="all">All Time</option>
           </select>
-        </div>
-        <div class="quick-actions">
-          <a class="btn" id="exportCsvBtn" href="/api/export/tasks.csv"><i class="fas fa-file-export"></i> Export Tasks CSV</a>
-          <button class="btn" id="createAnnouncementBtn" style="display:none"><i class="fas fa-bullhorn"></i> Create Announcement</button>
         </div>
       </div>
       
@@ -213,14 +233,6 @@
         <div class="report-cards" id="winnersCards">
           <!-- Winners will be populated here -->
         </div>
-      </div>
-
-      <!-- Announcements -->
-      <div class="reports-container" id="announcementsContainer">
-        <h3>Announcements</h3>
-        <ul id="announcementsList">
-          <!-- Announcements will be populated here -->
-        </ul>
       </div>
       
       <!-- Overdue Tasks Alert -->
@@ -277,7 +289,6 @@
       <div class="dashboard-header">
         <h2>Task Management</h2>
         <button class="btn" id="addTaskBtn"><i class="fas fa-plus"></i> Add New Task</button>
-        <button class="btn" id="autoAssignBtn" style="display:none"><i class="fas fa-network-wired"></i> Auto-Assign Pending</button>
       </div>
       
       <!-- Filter Section -->
@@ -304,8 +315,8 @@
             <label for="filterBranch">Branch</label>
             <select id="filterBranch" class="form-control">
               <option value="all">All Branches</option>
-              <option value="SHOP-A">Bank Road</option>
-              <option value="SHOP-B">University Road</option>
+              <option value="SHOP-A">Shop A</option>
+              <option value="SHOP-B">Shop B</option>
             </select>
           </div>
           
@@ -583,9 +594,6 @@
         <h2>Staff Panel - All Tasks Overview</h2>
         <div class="user-info">
           <span>Welcome, <strong id="currentStaffName">Staff Member</strong></span>
-          <span id="attendanceStatus" class="ms-3"></span>
-          <button class="btn" id="checkInBtn"><i class="fas fa-sign-in-alt"></i> Check-In</button>
-          <button class="btn" id="checkOutBtn"><i class="fas fa-sign-out-alt"></i> Check-Out</button>
         </div>
       </div>
       
