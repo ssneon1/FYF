@@ -1,4 +1,4 @@
-// Runtime state (populated from backend)
+    // Runtime state (populated from backend)
     let tasks = [];
 
     // Services (populated from backend)
@@ -106,15 +106,6 @@
     const allTasksSearch = document.getElementById('allTasksSearch');
     const tabButtons = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
-    // New UI elements
-    const themeToggle = document.getElementById('themeToggle');
-    const announcementsContainer = document.getElementById('announcementsContainer');
-    const announcementsList = document.getElementById('announcementsList');
-    const createAnnouncementBtn = document.getElementById('createAnnouncementBtn');
-    const autoAssignBtn = document.getElementById('autoAssignBtn');
-    const checkInBtn = document.getElementById('checkInBtn');
-    const checkOutBtn = document.getElementById('checkOutBtn');
-    const attendanceStatus = document.getElementById('attendanceStatus');
 
     // Event Listeners
     document.addEventListener('DOMContentLoaded', initApp);
@@ -128,7 +119,6 @@
     
     loginForm.addEventListener('submit', handleLogin);
     logoutBtn.addEventListener('click', handleLogout);
-    if (themeToggle) themeToggle.addEventListener('click', toggleTheme);
     
     navLinks.forEach(link => {
       link.addEventListener('click', (e) => {
@@ -184,7 +174,6 @@
     cancelServiceBtn.addEventListener('click', hideServiceForm);
     serviceForm.addEventListener('submit', handleServiceSubmit);
     serviceSearch.addEventListener('input', filterServices);
-    if (autoAssignBtn) autoAssignBtn.addEventListener('click', handleAutoAssign);
 
     // Staff Panel Event Listeners
     tabButtons.forEach(button => {
@@ -195,18 +184,11 @@
     });
 
     allTasksSearch.addEventListener('input', filterAllTasks);
-    if (checkInBtn) checkInBtn.addEventListener('click', attendanceCheckIn);
-    if (checkOutBtn) checkOutBtn.addEventListener('click', attendanceCheckOut);
 
     // Initialize the application
     function initApp() {
       // Check if user is already logged in (from session storage)
       const savedUser = sessionStorage.getItem('currentUser');
-      const savedTheme = localStorage.getItem('fyf_theme');
-      if (savedTheme === 'dark') {
-        document.body.classList.add('dark-mode');
-        if (themeToggle) themeToggle.innerHTML = '<i class="fas fa-sun"></i> Light Mode';
-      }
       if (savedUser) {
         currentUser = JSON.parse(savedUser);
         showApp();
@@ -243,8 +225,6 @@
         actionsHeader.classList.remove('hidden');
         addStaffBtn.classList.remove('hidden');
         addServiceBtn.classList.remove('hidden');
-        if (createAnnouncementBtn) createAnnouncementBtn.style.display = '';
-        if (autoAssignBtn) autoAssignBtn.style.display = '';
       } else if (currentUser.role === 'manager') {
         staffNav.classList.remove('hidden');
         reportsNav.classList.remove('hidden');
@@ -253,8 +233,6 @@
         actionsHeader.classList.remove('hidden');
         addStaffBtn.classList.add('hidden');
         addServiceBtn.classList.remove('hidden');
-        if (createAnnouncementBtn) createAnnouncementBtn.style.display = '';
-        if (autoAssignBtn) autoAssignBtn.style.display = '';
       } else {
         // Staff user
         staffNav.classList.add('hidden');
@@ -264,8 +242,6 @@
         actionsHeader.classList.add('hidden');
         addStaffBtn.classList.add('hidden');
         addServiceBtn.classList.add('hidden');
-        if (createAnnouncementBtn) createAnnouncementBtn.style.display = 'none';
-        if (autoAssignBtn) autoAssignBtn.style.display = 'none';
       }
       
       // Populate staff dropdown
@@ -311,67 +287,6 @@
         throw new Error(message);
       }
       return data;
-    }
-
-    // Theme toggle
-    function toggleTheme() {
-      const dark = document.body.classList.toggle('dark-mode');
-      if (themeToggle) themeToggle.innerHTML = dark ? '<i class="fas fa-sun"></i> Light Mode' : '<i class="fas fa-moon"></i> Dark Mode';
-      localStorage.setItem('fyf_theme', dark ? 'dark' : 'light');
-    }
-
-    // Announcements
-    function loadAnnouncements() {
-      if (!announcementsList || !announcementsContainer) return;
-      announcementsList.innerHTML = '';
-      apiFetch('/api/announcements')
-        .then(list => {
-          if (!Array.isArray(list) || list.length === 0) {
-            announcementsContainer.classList.add('hidden');
-            return;
-          }
-          announcementsContainer.classList.remove('hidden');
-          list.forEach(a => {
-            const li = document.createElement('li');
-            const createdAt = a.created_at ? new Date(a.created_at).toLocaleString() : '';
-            li.innerHTML = `<strong>${a.title}</strong> — ${a.message} <small class="text-muted">${createdAt}</small>`;
-            announcementsList.appendChild(li);
-          });
-        })
-        .catch(() => announcementsContainer.classList.add('hidden'));
-    }
-
-    if (createAnnouncementBtn) {
-      createAnnouncementBtn.addEventListener('click', () => {
-        const title = prompt('Announcement title:');
-        if (!title) return;
-        const message = prompt('Announcement message:');
-        if (!message) return;
-        apiFetch('/api/announcements', { method: 'POST', body: JSON.stringify({ title, message, audience: 'all' }) })
-          .then(() => { showToast('Announcement created!', 'success'); loadAnnouncements(); })
-          .catch(err => showToast(`Failed: ${err.message}`, 'error'));
-      });
-    }
-
-    // Auto-assign pending tasks
-    function handleAutoAssign() {
-      const serviceType = (filterService && filterService.value && filterService.value !== 'all') ? filterService.value : null;
-      apiFetch('/api/tasks/auto-assign', { method: 'POST', body: JSON.stringify({ service_type: serviceType }) })
-        .then(res => { showToast(`Auto-assigned ${res.count} tasks.`, 'success'); fetchTasksAndRender(); })
-        .catch(err => showToast(`Auto-assign failed: ${err.message}`, 'error'));
-    }
-
-    // Attendance
-    function attendanceCheckIn() {
-      apiFetch('/api/attendance/checkin', { method: 'POST' })
-        .then(r => { if (attendanceStatus) attendanceStatus.textContent = `Checked in at ${new Date(r.checkin_time).toLocaleTimeString()}`; showToast('Checked in!', 'success'); })
-        .catch(err => showToast(`Check-in failed: ${err.message}`, 'error'));
-    }
-
-    function attendanceCheckOut() {
-      apiFetch('/api/attendance/checkout', { method: 'POST' })
-        .then(r => { if (attendanceStatus) attendanceStatus.textContent = `Checked out at ${new Date(r.checkout_time).toLocaleTimeString()}`; showToast('Checked out!', 'success'); })
-        .catch(err => showToast(`Check-out failed: ${err.message}`, 'error'));
     }
 
     function mapBackendTaskToUI(t) {
@@ -485,7 +400,6 @@
           dashboardPage.classList.remove('hidden');
           document.querySelector('[data-page="dashboard"]').classList.add('active');
           updateDashboard();
-          loadAnnouncements();
           break;
         case 'tasks':
           tasksPage.classList.remove('hidden');
@@ -584,70 +498,71 @@
     }
 
     // Create Task Card for Staff Panel
-    function createTaskCard(task, type) {
-      const taskCard = document.createElement('div');
-      taskCard.className = `task-card ${type === 'extra' ? 'extra-task' : ''}`;
-      
-      const isMyTask = task.assignedTo === currentUser.username || task.takenOverBy === currentUser.username;
-      const isTakenOver = task.takenOverBy === currentUser.username;
-      const canTakeOver = !isMyTask && task.takenOverBy === null;
-      
-      taskCard.innerHTML = `
-        <div class="task-card-header">
-          <div>
-            <strong>${task.orderNo}</strong> - ${task.customerName}
-            ${isTakenOver ? '<span class="badge bg-warning">Taken Over</span>' : ''}
-          </div>
-          <div>
-            <span class="status status-${task.status.toLowerCase().replace(' ', '-')}">${task.status}</span>
-          </div>
-        </div>
-        <div class="task-card-body">
-          <div class="task-info">
-            <strong>Service:</strong> ${task.serviceType}
-          </div>
-          <div class="task-info">
-            <strong>Branch:</strong> ${task.branch}
-          </div>
-          <div class="task-info">
-            <strong>Assigned To:</strong> ${task.assignedTo}
-          </div>
-          <div class="task-info">
-            <strong>Contact:</strong> ${task.contactNumber}
-          </div>
-          <div class="task-info">
-            <strong>Date:</strong> ${new Date(task.timestamp).toLocaleDateString()}
-          </div>
-        </div>
-        <div class="task-actions">
-          ${canTakeOver ? `<button class="action-btn takeover-btn" data-task-id="${task.id}">Take Over</button>` : ''}
-          ${isMyTask ? `
-            <select class="status-select" data-task-id="${task.id}">
-              <option value="Received" ${task.status === 'Received' ? 'selected' : ''}>Received</option>
-              <option value="Pending" ${task.status === 'Pending' ? 'selected' : ''}>Pending</option>
-              <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
-              <option value="Completed" ${task.status === 'Completed' ? 'selected' : ''}>Completed</option>
-              <option value="Hold" ${task.status === 'Hold' ? 'selected' : ''}>Hold</option>
-              <option value="Cancelled" ${task.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
-            </select>
-          ` : ''}
-        </div>
-      `;
-      
-      // Add event listeners
-      if (canTakeOver) {
-        taskCard.querySelector('.takeover-btn').addEventListener('click', () => takeOverTask(task.id));
-      }
-      
-      if (isMyTask) {
-        taskCard.querySelector('.status-select').addEventListener('change', (e) => {
-          updateTaskStatus(task.id, e.target.value);
-        });
-      }
-      
-      return taskCard;
-    }
-
+function createTaskCard(task, type) {
+  const taskCard = document.createElement('div');
+  taskCard.className = `task-card ${type === 'extra' ? 'extra-task' : ''}`;
+  
+  const isMyTask = task.assignedTo === currentUser.username || task.takenOverBy === currentUser.username;
+  const isTakenOver = task.takenOverBy === currentUser.username;
+  const canTakeOver = !isMyTask && task.takenOverBy === null;
+  
+  taskCard.innerHTML = `
+    <div class="task-card-header">
+      <div>
+        <strong>${task.orderNo}</strong> - ${task.customerName}
+        ${isTakenOver ? '<span class="badge bg-warning">Taken Over</span>' : ''}
+      </div>
+      <div>
+        <span class="status status-${task.status.toLowerCase().replace(' ', '-')}">${task.status}</span>
+      </div>
+    </div>
+    <div class="task-card-body">
+      <div class="task-info">
+        <strong>Service:</strong> ${task.serviceType}
+      </div>
+      <div class="task-info">
+        <strong>Branch:</strong> ${task.branch}
+      </div>
+      <div class="task-info">
+        <strong>Assigned To:</strong> ${task.assignedTo}
+      </div>
+      <div class="task-info">
+        <strong>Contact:</strong> ${task.contactNumber}
+      </div>
+      <div class="task-info">
+        <strong>Date:</strong> ${new Date(task.timestamp).toLocaleDateString()}
+      </div>
+    </div>
+    <div class="task-actions">
+      ${canTakeOver ? `<button class="action-btn takeover-btn" data-task-id="${task.id}">Take Over</button>` : ''}
+      ${isMyTask ? `
+        <button class="action-btn edit-btn" data-task-id="${task.id}">Edit</button>
+        <select class="status-select" data-task-id="${task.id}">
+          <option value="Received" ${task.status === 'Received' ? 'selected' : ''}>Received</option>
+          <option value="Pending" ${task.status === 'Pending' ? 'selected' : ''}>Pending</option>
+          <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+          <option value="Completed" ${task.status === 'Completed' ? 'selected' : ''}>Completed</option>
+          <option value="Hold" ${task.status === 'Hold' ? 'selected' : ''}>Hold</option>
+          <option value="Cancelled" ${task.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+        </select>
+      ` : ''}
+    </div>
+  `;
+  
+  // Add event listeners
+  if (canTakeOver) {
+    taskCard.querySelector('.takeover-btn').addEventListener('click', () => takeOverTask(task.id));
+  }
+  
+  if (isMyTask) {
+    taskCard.querySelector('.edit-btn').addEventListener('click', () => editTask(task.id));
+    taskCard.querySelector('.status-select').addEventListener('change', (e) => {
+      updateTaskStatus(task.id, e.target.value);
+    });
+  }
+  
+  return taskCard;
+}
     // Take Over Task
     function takeOverTask(taskId) {
       const taskIndex = tasks.findIndex(t => t.id === taskId);
@@ -886,14 +801,14 @@
     }
 
     // Handle task form submission
-    function handleTaskSubmit(e) {
-      e.preventDefault();
-      
-      // If editing an existing task and user is staff, show reason modal
-      if (editingTaskId !== null && currentUser.role === 'staff') {
-        editReasonModal.style.display = 'flex';
-        return;
-      }
+   function handleTaskSubmit(e) {
+  e.preventDefault();
+  
+  // If editing an existing task and user is staff, show reason modal
+  if (editingTaskId !== null && currentUser.role === 'staff') {
+    editReasonModal.style.display = 'flex';
+    return;
+  }
       
       // Otherwise, save the task directly
       saveTask();
@@ -1131,105 +1046,142 @@
     }
 
     // Create a task row for the table
-    function createTaskRow(task, includeActions) {
-      const row = document.createElement('tr');
-      
-      // Format date for display
-      const taskDate = new Date(task.timestamp);
-      const formattedDate = taskDate.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      });
-      
-      row.innerHTML = `
-        <td>${task.orderNo}${task.edited ? '<span class="edit-indicator" title="Edited">✏️</span>' : ''}</td>
-        <td>${task.customerName}</td>
-        <td>${task.serviceType}</td>
-        <td>
-          <span class="status status-${task.status.toLowerCase().replace(' ', '-')}">${task.status}</span>
-        </td>
-        <td>${task.assignedTo}</td>
-        <td>${task.sharedWith && task.sharedWith.length > 0 ? task.sharedWith.join(', ') : '<span class="text-muted">—</span>'}</td>
-        <td>${formattedDate}</td>
-        <td>${task.contactNumber}</td>
+ // Create a task row for the table
+function createTaskRow(task, includeActions) {
+  const row = document.createElement('tr');
+  
+  // Format date for display
+  const taskDate = new Date(task.timestamp);
+  const formattedDate = taskDate.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+  
+  row.innerHTML = `
+    <td>${task.orderNo}${task.edited ? '<span class="edit-indicator" title="Edited">✏️</span>' : ''}</td>
+    <td>${task.customerName}</td>
+    <td>${task.serviceType}</td>
+    <td>
+      <span class="status status-${task.status.toLowerCase().replace(' ', '-')}">${task.status}</span>
+    </td>
+    <td>${task.assignedTo}</td>
+    <td>${task.sharedWith && task.sharedWith.length > 0 ? task.sharedWith.join(', ') : '<span class="text-muted">—</span>'}</td>
+    <td>${formattedDate}</td>
+    <td>${task.contactNumber}</td>
+  `;
+  
+  if (includeActions) {
+    const actionsCell = document.createElement('td');
+    
+    // Different actions based on user role
+    if (currentUser.role === 'admin') {
+      actionsCell.innerHTML = `
+        <button class="action-btn edit-btn" data-id="${task.id}">Edit</button>
+        <button class="action-btn delete-btn" data-id="${task.id}">Delete</button>
+        <button class="action-btn share-task-btn" data-id="${task.id}">Share</button>
       `;
+    } else if (currentUser.role === 'manager') {
+      actionsCell.innerHTML = `
+        <button class="action-btn edit-btn" data-id="${task.id}">Edit</button>
+        <button class="action-btn share-task-btn" data-id="${task.id}">Share</button>
+      `;
+    } else {
+      // Staff can edit tasks assigned to them or shared with them
+      const canEdit = task.assignedTo === currentUser.username || task.sharedWith.includes(currentUser.username);
       
-      if (includeActions) {
-        const actionsCell = document.createElement('td');
-        
-        // Different actions based on user role
-        if (currentUser.role === 'admin') {
-          actionsCell.innerHTML = `
-            <button class="action-btn edit-btn" data-id="${task.id}">Edit</button>
-            <button class="action-btn delete-btn" data-id="${task.id}">Delete</button>
-            <button class="action-btn share-task-btn" data-id="${task.id}">Share</button>
-          `;
-        } else if (currentUser.role === 'manager') {
-          actionsCell.innerHTML = `
-            <button class="action-btn edit-btn" data-id="${task.id}">Edit</button>
-            <button class="action-btn share-task-btn" data-id="${task.id}">Share</button>
-          `;
-        } else {
-          // Staff can only edit status and share tasks
-          actionsCell.innerHTML = `
-            <select class="status-select" data-id="${task.id}">
-              <option value="Received" ${task.status === 'Received' ? 'selected' : ''}>Received</option>
-              <option value="Pending" ${task.status === 'Pending' ? 'selected' : ''}>Pending</option>
-              <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
-              <option value="Completed" ${task.status === 'Completed' ? 'selected' : ''}>Completed</option>
-              <option value="Hold" ${task.status === 'Hold' ? 'selected' : ''}>Hold</option>
-              <option value="Cancelled" ${task.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
-            </select>
-            <button class="action-btn share-task-btn" data-id="${task.id}">Share</button>
-          `;
-        }
-        
-        row.appendChild(actionsCell);
-        
-        // Add event listeners to action buttons
-        if (currentUser.role === 'admin' || currentUser.role === 'manager') {
-          actionsCell.querySelector('.edit-btn').addEventListener('click', () => editTask(task.id));
-        }
-        
-        if (currentUser.role === 'admin') {
-          actionsCell.querySelector('.delete-btn').addEventListener('click', () => deleteTask(task.id));
-        }
-        
-        // Add event listener to status select for staff
-        if (currentUser.role === 'staff') {
-          actionsCell.querySelector('.status-select').addEventListener('change', (e) => {
-            updateTaskStatus(task.id, e.target.value);
-          });
-        }
-        
-        // Add event listener to share button for all roles
-        actionsCell.querySelector('.share-task-btn').addEventListener('click', () => showShareModal(task.id));
+      if (canEdit) {
+        actionsCell.innerHTML = `
+          <button class="action-btn edit-btn" data-id="${task.id}">Edit</button>
+          <button class="action-btn share-task-btn" data-id="${task.id}">Share</button>
+          <select class="status-select" data-id="${task.id}">
+            <option value="Received" ${task.status === 'Received' ? 'selected' : ''}>Received</option>
+            <option value="Pending" ${task.status === 'Pending' ? 'selected' : ''}>Pending</option>
+            <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+            <option value="Completed" ${task.status === 'Completed' ? 'selected' : ''}>Completed</option>
+            <option value="Hold" ${task.status === 'Hold' ? 'selected' : ''}>Hold</option>
+            <option value="Cancelled" ${task.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+          </select>
+        `;
+      } else {
+        actionsCell.innerHTML = `
+          <select class="status-select" data-id="${task.id}">
+            <option value="Received" ${task.status === 'Received' ? 'selected' : ''}>Received</option>
+            <option value="Pending" ${task.status === 'Pending' ? 'selected' : ''}>Pending</option>
+            <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+            <option value="Completed" ${task.status === 'Completed' ? 'selected' : ''}>Completed</option>
+            <option value="Hold" ${task.status === 'Hold' ? 'selected' : ''}>Hold</option>
+            <option value="Cancelled" ${task.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+          </select>
+          <button class="action-btn share-task-btn" data-id="${task.id}">Share</button>
+        `;
       }
-      
-      return row;
     }
+    
+    row.appendChild(actionsCell);
+    
+    // Add event listeners to action buttons
+    if (currentUser.role === 'admin' || currentUser.role === 'manager') {
+      actionsCell.querySelector('.edit-btn').addEventListener('click', () => editTask(task.id));
+    }
+    
+    if (currentUser.role === 'admin') {
+      actionsCell.querySelector('.delete-btn').addEventListener('click', () => deleteTask(task.id));
+    }
+    
+    // Add event listeners for staff edit button
+    if (currentUser.role === 'staff') {
+      const editBtn = actionsCell.querySelector('.edit-btn');
+      if (editBtn) {
+        editBtn.addEventListener('click', () => editTask(task.id));
+      }
+    }
+    
+    // Add event listener to status select for all roles
+    const statusSelect = actionsCell.querySelector('.status-select');
+    if (statusSelect) {
+      statusSelect.addEventListener('change', (e) => {
+        updateTaskStatus(task.id, e.target.value);
+      });
+    }
+    
+    // Add event listener to share button for all roles
+    actionsCell.querySelector('.share-task-btn').addEventListener('click', () => showShareModal(task.id));
+  }
+  
+  return row;
+}
 
     // Edit a task
-    function editTask(id) {
-      const task = tasks.find(t => t.id === id);
-      if (!task) return;
-      
-      document.getElementById('branchCode').value = task.branch;
-      document.getElementById('customerName').value = task.customerName;
-      document.getElementById('contactNumber').value = task.contactNumber;
-      document.getElementById('serviceType').value = task.serviceType;
-      document.getElementById('assignedTo').value = task.assignedTo;
-      document.getElementById('paymode').value = task.paymode;
-      document.getElementById('servicePrice').value = task.servicePrice;
-      document.getElementById('paidAmount').value = task.paidAmount;
-      document.getElementById('serviceCharge').value = task.serviceCharge;
-      document.getElementById('description').value = task.description;
-      
-      formTitle.textContent = 'Edit Task';
-      editingTaskId = id;
-      taskFormContainer.classList.remove('hidden');
-      taskFormContainer.scrollIntoView({ behavior: 'smooth' });
+   // Edit a task
+function editTask(id) {
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  
+  // Check if staff is allowed to edit this task
+  if (currentUser.role === 'staff') {
+    if (task.assignedTo !== currentUser.username && !task.sharedWith.includes(currentUser.username)) {
+      showToast('You can only edit tasks assigned to you or shared with you', 'error');
+      return;
+    }
+  }
+  
+  document.getElementById('branchCode').value = task.branch;
+  document.getElementById('customerName').value = task.customerName;
+  document.getElementById('contactNumber').value = task.contactNumber;
+  document.getElementById('serviceType').value = task.serviceType;
+  document.getElementById('assignedTo').value = task.assignedTo;
+  document.getElementById('paymode').value = task.paymode;
+  document.getElementById('servicePrice').value = task.servicePrice;
+  document.getElementById('paidAmount').value = task.paidAmount;
+  document.getElementById('serviceCharge').value = task.serviceCharge;
+  document.getElementById('description').value = task.description;
+  
+  formTitle.textContent = 'Edit Task';
+  editingTaskId = id;
+  taskFormContainer.classList.remove('hidden');
+  taskFormContainer.scrollIntoView({ behavior: 'smooth' });
+
     }
 
     // Delete a task
@@ -1595,389 +1547,5 @@
       setTimeout(() => {
         toast.classList.remove('show');
       }, 3000);
-    }
-
-
-
-
-    // Update Staff Panel
-    function updateStaffPanel() {
-      if (!currentUser) return;
-      
-      // Set current staff name
-      currentStaffName.textContent = currentUser.username;
-      
-      // Calculate statistics
-      const totalTasks = tasks.length;
-      const pendingTasks = tasks.filter(task => 
-        task.status === 'Pending' || task.status === 'Received' || task.status === 'In Progress'
-      ).length;
-      const myTasks = tasks.filter(task => 
-        task.assignedTo === currentUser.username || 
-        (task.sharedWith && task.sharedWith.includes(currentUser.username))
-      ).length;
-      const extraTasks = tasks.filter(task => 
-        task.takenOverBy === currentUser.username
-      ).length;
-      
-      // Update statistics cards
-      staffTotalTasks.textContent = totalTasks;
-      staffPendingTasks.textContent = pendingTasks;
-      staffMyTasks.textContent = myTasks;
-      staffExtraTasks.textContent = extraTasks;
-      
-      // Populate task containers
-      populateAllTasks();
-      populateMyTasks();
-      populateExtraTasks();
-      
-      // Load attendance status
-      loadAttendanceStatus();
-    }
-
-    // Load attendance status
-    function loadAttendanceStatus() {
-      apiFetch('/api/attendance/status')
-        .then(status => {
-          if (status.checked_in) {
-            attendanceStatus.textContent = `Checked in at ${new Date(status.checkin_time).toLocaleTimeString()}`;
-            checkInBtn.style.display = 'none';
-            checkOutBtn.style.display = '';
-          } else {
-            attendanceStatus.textContent = 'Not checked in';
-            checkInBtn.style.display = '';
-            checkOutBtn.style.display = 'none';
-          }
-        })
-        .catch(() => {
-          attendanceStatus.textContent = 'Attendance status unavailable';
-          checkInBtn.style.display = '';
-          checkOutBtn.style.display = 'none';
-        });
-    }
-
-    // Populate All Tasks
-    function populateAllTasks() {
-      allTasksContainer.innerHTML = '';
-      
-      if (tasks.length === 0) {
-        allTasksContainer.innerHTML = '<p class="text-center text-muted">No tasks found.</p>';
-        return;
-      }
-      
-      tasks.forEach(task => {
-        const taskCard = createTaskCard(task, 'all');
-        allTasksContainer.appendChild(taskCard);
-      });
-    }
-
-    // Populate My Tasks
-    function populateMyTasks() {
-      myTasksContainer.innerHTML = '';
-      
-      const myTasks = tasks.filter(task => 
-        task.assignedTo === currentUser.username || 
-        (task.sharedWith && task.sharedWith.includes(currentUser.username)) ||
-        task.takenOverBy === currentUser.username
-      );
-      
-      if (myTasks.length === 0) {
-        myTasksContainer.innerHTML = '<p class="text-center text-muted">No tasks assigned to you.</p>';
-        return;
-      }
-      
-      myTasks.forEach(task => {
-        const taskCard = createTaskCard(task, 'my');
-        myTasksContainer.appendChild(taskCard);
-      });
-    }
-
-    // Populate Extra Tasks
-    function populateExtraTasks() {
-      extraTasksContainer.innerHTML = '';
-      
-      const extraTasks = tasks.filter(task => 
-        task.takenOverBy === currentUser.username || 
-        (task.sharedWith && task.sharedWith.includes(currentUser.username) && task.assignedTo !== currentUser.username)
-      );
-      
-      if (extraTasks.length === 0) {
-        extraTasksContainer.innerHTML = '<p class="text-center text-muted">No extra tasks taken over yet.</p>';
-        return;
-      }
-      
-      extraTasks.forEach(task => {
-        const taskCard = createTaskCard(task, 'extra');
-        extraTasksContainer.appendChild(taskCard);
-      });
-    }
-
-    // Create Task Card for Staff Panel
-    function createTaskCard(task, type) {
-      const taskCard = document.createElement('div');
-      taskCard.className = `task-card ${type}-task-card`;
-      
-      const isAssignedToMe = task.assignedTo === currentUser.username;
-      const isSharedWithMe = task.sharedWith && task.sharedWith.includes(currentUser.username);
-      const isTakenOverByMe = task.takenOverBy === currentUser.username;
-      const isMyTask = isAssignedToMe || isSharedWithMe || isTakenOverByMe;
-      const canTakeOver = !isMyTask && type === 'all';
-      
-      // Format date
-      const taskDate = new Date(task.timestamp);
-      const formattedDate = taskDate.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      });
-      
-      taskCard.innerHTML = `
-        <div class="task-card-header">
-          <div class="task-title">
-            <strong>${task.orderNo}</strong> - ${task.customerName}
-            ${isTakenOverByMe ? '<span class="badge badge-warning">Taken Over</span>' : ''}
-            ${isSharedWithMe ? '<span class="badge badge-info">Shared</span>' : ''}
-          </div>
-          <div class="task-status">
-            <span class="status status-${task.status.toLowerCase().replace(' ', '-')}">${task.status}</span>
-          </div>
-        </div>
-        <div class="task-card-body">
-          <div class="task-info-row">
-            <span class="task-label">Service:</span>
-            <span class="task-value">${task.serviceType}</span>
-          </div>
-          <div class="task-info-row">
-            <span class="task-label">Branch:</span>
-            <span class="task-value">${task.branch}</span>
-          </div>
-          <div class="task-info-row">
-            <span class="task-label">Assigned To:</span>
-            <span class="task-value">${task.assignedTo}</span>
-          </div>
-          <div class="task-info-row">
-            <span class="task-label">Contact:</span>
-            <span class="task-value">${task.contactNumber}</span>
-          </div>
-          <div class="task-info-row">
-            <span class="task-label">Date:</span>
-            <span class="task-value">${formattedDate}</span>
-          </div>
-          ${task.description ? `
-          <div class="task-info-row">
-            <span class="task-label">Description:</span>
-            <span class="task-value">${task.description}</span>
-          </div>
-          ` : ''}
-        </div>
-        <div class="task-card-actions">
-          ${canTakeOver ? `
-            <button class="btn btn-sm btn-primary takeover-btn" data-task-id="${task.id}">
-              <i class="fas fa-hand-paper"></i> Take Over
-            </button>
-          ` : ''}
-          ${isMyTask ? `
-            <div class="status-control">
-              <label>Update Status:</label>
-              <select class="form-control status-select" data-task-id="${task.id}">
-                <option value="Received" ${task.status === 'Received' ? 'selected' : ''}>Received</option>
-                <option value="Pending" ${task.status === 'Pending' ? 'selected' : ''}>Pending</option>
-                <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
-                <option value="Completed" ${task.status === 'Completed' ? 'selected' : ''}>Completed</option>
-                <option value="Hold" ${task.status === 'Hold' ? 'selected' : ''}>Hold</option>
-                <option value="Cancelled" ${task.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
-              </select>
-            </div>
-          ` : ''}
-        </div>
-      `;
-      
-      // Add event listeners
-      if (canTakeOver) {
-        taskCard.querySelector('.takeover-btn').addEventListener('click', (e) => {
-          e.preventDefault();
-          takeOverTask(task.id);
-        });
-      }
-      
-      if (isMyTask) {
-        taskCard.querySelector('.status-select').addEventListener('change', (e) => {
-          updateTaskStatus(task.id, e.target.value);
-        });
-      }
-      
-      return taskCard;
-    }
-
-    // Take Over Task
-    function takeOverTask(taskId) {
-      if (!confirm('Are you sure you want to take over this task?')) return;
-      
-      apiFetch(`/api/tasks/${taskId}/takeover`, {
-        method: 'POST',
-        body: JSON.stringify({ staff_name: currentUser.username })
-      })
-      .then(() => {
-        showToast('Task taken over successfully!', 'success');
-        return fetchTasksAndRender();
-      })
-      .then(() => {
-        updateStaffPanel();
-      })
-      .catch(err => {
-        showToast(`Failed to take over task: ${err.message}`, 'error');
-      });
-    }
-
-    // Switch Tabs in Staff Panel
-    function switchTab(tabId) {
-      // Update tab buttons
-      tabButtons.forEach(button => {
-        if (button.getAttribute('data-tab') === tabId) {
-          button.classList.add('active');
-        } else {
-          button.classList.remove('active');
-        }
-      });
-      
-      // Update tab contents
-      tabContents.forEach(content => {
-        if (content.id === tabId) {
-          content.classList.add('active');
-        } else {
-          content.classList.remove('active');
-        }
-      });
-    }
-
-    // Filter All Tasks in Staff Panel
-    function filterAllTasks() {
-      const searchTerm = allTasksSearch.value.toLowerCase();
-      const taskCards = allTasksContainer.querySelectorAll('.task-card');
-      
-      taskCards.forEach(card => {
-        const text = card.textContent.toLowerCase();
-        if (text.includes(searchTerm)) {
-          card.style.display = '';
-        } else {
-          card.style.display = 'none';
-        }
-      });
-    }
-
-    // Update task status (for staff)
-    function updateTaskStatus(id, newStatus) {
-      const taskIndex = tasks.findIndex(t => t.id === id);
-      if (taskIndex === -1) {
-        showToast('Task not found', 'error');
-        return;
-      }
-
-      const oldStatus = tasks[taskIndex].status;
-      
-      // Update status in database via API
-      apiFetch(`/api/tasks/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ 
-          status: newStatus,
-          edit_reason: `Status changed from ${oldStatus} to ${newStatus} by ${currentUser.username}`
-        })
-      })
-      .then(() => {
-        // Update local state only after successful API call
-        tasks[taskIndex].status = newStatus;
-        tasks[taskIndex].edited = true;
-        
-        // Show status update modal
-        statusOrderNo.textContent = tasks[taskIndex].orderNo;
-        statusNewStatus.textContent = newStatus;
-        statusUpdateModal.style.display = 'flex';
-        
-        renderTasks();
-        updateDashboard();
-        updateStaffPanel();
-        showToast('Task status updated successfully!', 'success');
-      })
-      .catch(err => {
-        showToast(`Failed to update task status: ${err.message}`, 'error');
-        // Revert the select dropdown to previous value
-        const selectElements = document.querySelectorAll(`.status-select[data-task-id="${id}"]`);
-        selectElements.forEach(select => {
-          select.value = oldStatus;
-        });
-      });
-    }
-
-    // ... (rest of the code remains the same)
-
-    // Initialize the application
-    function initApp() {
-      // Check if user is already logged in (from session storage)
-      const savedUser = sessionStorage.getItem('currentUser');
-      const savedTheme = localStorage.getItem('fyf_theme');
-      if (savedTheme === 'dark') {
-        document.body.classList.add('dark-mode');
-        if (themeToggle) themeToggle.innerHTML = '<i class="fas fa-sun"></i> Light Mode';
-      }
-      if (savedUser) {
-        currentUser = JSON.parse(savedUser);
-        showApp();
-        
-        // Initialize staff panel if it's the current page
-        if (currentPage === 'staff-panel') {
-          updateStaffPanel();
-        }
-      } else {
-        showLogin();
-      }
-    }
-
-    // Navigate to different pages
-    function navigateToPage(page) {
-      // Hide all pages
-      dashboardPage.classList.add('hidden');
-      tasksPage.classList.add('hidden');
-      staffPage.classList.add('hidden');
-      reportsPage.classList.add('hidden');
-      databasePage.classList.add('hidden');
-      staffPanelPage.classList.add('hidden');
-      
-      // Remove active class from all nav links
-      navLinks.forEach(link => link.classList.remove('active'));
-      
-      // Show the selected page and set active nav link
-      switch(page) {
-        case 'dashboard':
-          dashboardPage.classList.remove('hidden');
-          document.querySelector('[data-page="dashboard"]').classList.add('active');
-          updateDashboard();
-          loadAnnouncements();
-          break;
-        case 'tasks':
-          tasksPage.classList.remove('hidden');
-          document.querySelector('[data-page="tasks"]').classList.add('active');
-          break;
-        case 'staff':
-          staffPage.classList.remove('hidden');
-          document.querySelector('[data-page="staff"]').classList.add('active');
-          updateStaffAlerts();
-          break;
-        case 'reports':
-          reportsPage.classList.remove('hidden');
-          document.querySelector('[data-page="reports"]').classList.add('active');
-          updateReports();
-          break;
-        case 'database':
-          databasePage.classList.remove('hidden');
-          document.querySelector('[data-page="database"]').classList.add('active');
-          break;
-        case 'staff-panel':
-          staffPanelPage.classList.remove('hidden');
-          document.querySelector('[data-page="staff-panel"]').classList.add('active');
-          updateStaffPanel();
-          break;
-      }
-      
-      currentPage = page;
     }
 
